@@ -1,0 +1,6 @@
+{
+  "name": "GrooveTrack",
+  "description": "Dark and groovy timetable attendance tracker with timetable schedule upload, class check-ins, and bunk stats.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
