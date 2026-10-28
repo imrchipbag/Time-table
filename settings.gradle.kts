@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "GrooveTrack"
+rootProject.name = "Tally"
 
 include(":app")

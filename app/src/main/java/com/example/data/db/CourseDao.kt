@@ -14,6 +14,9 @@ interface CourseDao {
     @Query("SELECT * FROM courses ORDER BY name ASC")
     fun getAllCourses(): Flow<List<Course>>
 
+    @Query("SELECT COUNT(*) FROM courses")
+    suspend fun getCourseCount(): Int
+
     @Query("SELECT * FROM courses WHERE id = :id LIMIT 1")
     suspend fun getCourseById(id: Long): Course?
 

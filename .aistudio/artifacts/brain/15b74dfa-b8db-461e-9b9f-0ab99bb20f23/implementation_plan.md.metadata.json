@@ -1,0 +1,6 @@
+{
+  "summary":  "Architectural blueprint and plan for adding photo-based schedule extraction to Tally using Gemini 3.8 Flash, featuring gallery/camera photo selection, AI timetable scanning, and interactive editable review of classes, postings, and labs before importing.",
+  "updatedAt":  "2026-10-28T10:57:19.984489765Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

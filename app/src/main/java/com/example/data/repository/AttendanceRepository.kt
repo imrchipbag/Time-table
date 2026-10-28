@@ -12,6 +12,10 @@ import com.example.data.model.ScheduleItem
 import com.example.data.model.TimeSlot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import android.content.Context
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlin.math.ceil
@@ -20,8 +24,31 @@ import kotlin.math.floor
 class AttendanceRepository(
     private val courseDao: CourseDao,
     private val timeSlotDao: TimeSlotDao,
-    private val attendanceDao: AttendanceRecordDao
+    private val attendanceDao: AttendanceRecordDao,
+    private val context: Context? = null
 ) {
+
+    private val prefs = context?.getSharedPreferences("tally_timetable_prefs", Context.MODE_PRIVATE)
+
+    private val _timetableValidity = MutableStateFlow(loadTimetableValidity())
+    val timetableValidity: StateFlow<Pair<String, String>> = _timetableValidity.asStateFlow()
+
+    fun saveTimetableValidity(start: String, end: String) {
+        prefs?.edit()
+            ?.putString("timetable_start", start)
+            ?.putString("timetable_end", end)
+            ?.apply()
+        _timetableValidity.value = Pair(start, end)
+    }
+
+    private fun loadTimetableValidity(): Pair<String, String> {
+        val today = LocalDate.now()
+        val defaultStart = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val defaultEnd = today.plusMonths(4).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val start = prefs?.getString("timetable_start", defaultStart) ?: defaultStart
+        val end = prefs?.getString("timetable_end", defaultEnd) ?: defaultEnd
+        return Pair(start, end)
+    }
 
     val allCourses: Flow<List<Course>> = courseDao.getAllCourses()
     val allTimeSlots: Flow<List<TimeSlot>> = timeSlotDao.getAllTimeSlots()
@@ -205,6 +232,11 @@ class AttendanceRepository(
         return courseDao.insertCourse(course)
     }
 
+    suspend fun updateCourseTargetPercent(courseId: Long, newTarget: Int) {
+        val course = courseDao.getCourseById(courseId) ?: return
+        courseDao.updateCourse(course.copy(targetPercent = newTarget.coerceIn(1, 100)))
+    }
+
     suspend fun updateCourse(course: Course) {
         courseDao.updateCourse(course)
     }
@@ -222,12 +254,27 @@ class AttendanceRepository(
         timeSlotDao.deleteTimeSlotById(slotId)
     }
 
-    suspend fun importParsedSlots(slots: List<ParsedCourseSlot>, replaceExisting: Boolean) {
-        if (replaceExisting) {
-            attendanceDao.clearAllAttendance()
-            timeSlotDao.clearAllTimeSlots()
-            courseDao.clearAllCourses()
+    suspend fun clearAllTimetable() {
+        attendanceDao.clearAllAttendance()
+        timeSlotDao.clearAllTimeSlots()
+        courseDao.clearAllCourses()
+    }
+
+    suspend fun importParsedSlots(
+        slots: List<ParsedCourseSlot>,
+        replaceExisting: Boolean,
+        startDate: String? = null,
+        endDate: String? = null
+    ) {
+        if (!startDate.isNullOrBlank() && !endDate.isNullOrBlank()) {
+            saveTimetableValidity(startDate, endDate)
         }
+
+        if (replaceExisting) {
+            clearAllTimetable()
+        }
+
+        if (slots.isEmpty()) return
 
         // Group by course name
         val groupedByName = slots.groupBy { it.courseName.trim() }
@@ -236,10 +283,11 @@ class AttendanceRepository(
             val course = Course(
                 name = courseName,
                 code = first.courseCode,
-                professor = first.professor,
-                room = first.room,
+                professor = "",
+                room = "",
                 colorHex = first.colorHex,
-                targetPercent = 75
+                targetPercent = 75,
+                sessionType = first.sessionType
             )
             val courseId = courseDao.insertCourse(course)
 
@@ -249,19 +297,12 @@ class AttendanceRepository(
                     dayOfWeek = slotInfo.dayOfWeek,
                     startTime = slotInfo.startTime,
                     endTime = slotInfo.endTime,
-                    roomOverride = slotInfo.room
+                    roomOverride = "",
+                    sessionType = slotInfo.sessionType
                 )
             }
             timeSlotDao.insertTimeSlots(timeSlots)
         }
     }
-
-    suspend fun seedInitialDataIfEmpty() {
-        // Only seed if no courses exist yet
-        val existing = courseDao.getCourseById(1L)
-        if (existing == null) {
-            val sample = TimetableParser.getSamplePresets()["Computer Science & AI"] ?: return
-            importParsedSlots(sample, replaceExisting = false)
-        }
-    }
 }
+

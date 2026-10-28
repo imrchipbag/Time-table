@@ -1,40 +1,39 @@
 package com.example.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val GroovyDarkColorScheme = darkColorScheme(
-    primary = GroovyMagenta,
-    onPrimary = GroovyBg,
-    primaryContainer = GroovySurfaceElevated,
-    onPrimaryContainer = GroovyMagenta,
-    secondary = GroovyCyan,
-    onSecondary = GroovyBg,
-    secondaryContainer = GroovySurfaceCard,
-    onSecondaryContainer = GroovyCyan,
-    tertiary = GroovyYellow,
-    onTertiary = GroovyBg,
-    background = GroovyBg,
-    onBackground = GroovyTextPrimary,
-    surface = GroovySurface,
-    onSurface = GroovyTextPrimary,
-    surfaceVariant = GroovySurfaceElevated,
-    onSurfaceVariant = GroovyTextSecondary,
-    outline = GroovyBorder,
-    outlineVariant = GroovyBorderBright,
-    error = GroovyMissed,
-    onError = GroovyBg
+private val MinimalMonoColorScheme = darkColorScheme(
+    primary = MonoWhite,
+    onPrimary = MonoBlack,
+    primaryContainer = MonoSurfaceElevated,
+    onPrimaryContainer = MonoWhite,
+    secondary = MonoLightGrey,
+    onSecondary = MonoBlack,
+    secondaryContainer = MonoSurfaceCard,
+    onSecondaryContainer = MonoOffWhite,
+    tertiary = MonoWhite,
+    onTertiary = MonoBlack,
+    background = MonoBlack,
+    onBackground = MonoWhite,
+    surface = MonoSurface,
+    onSurface = MonoWhite,
+    surfaceVariant = MonoSurfaceElevated,
+    onSurfaceVariant = MonoLightGrey,
+    outline = MonoBorder,
+    outlineVariant = MonoBorderBright,
+    error = MonoMissed,
+    onError = MonoBlack
 )
 
 @Composable
 fun GrooveTrackTheme(
-    darkTheme: Boolean = true, // Default to true for the Dark and Groovy aesthetic requested
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = GroovyDarkColorScheme,
+        colorScheme = MinimalMonoColorScheme,
         typography = Typography,
         content = content
     )

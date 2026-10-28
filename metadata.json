@@ -1,6 +1,6 @@
 {
-  "name": "GrooveTrack",
-  "description": "Dark and groovy timetable attendance tracker with timetable schedule upload, class check-ins, and bunk stats.",
+  "name": "Tally",
+  "description": "Minimal attendance tracker with individual subject goals, timetable class check-in reminders, and Tally AI advisor.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

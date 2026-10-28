@@ -4,31 +4,23 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Groovy retro rounded calendar base -->
-    <path
-        android:fillColor="#241B48"
-        android:pathData="M34,30 h40 c4.4,0 8,3.6 8,8 v36 c0,4.4 -3.6,8 -8,8 H34 c-4.4,0 -8,-3.6 -8,-8 V38 c0,-4.4 3.6,-8 8,-8 Z" />
-    
-    <!-- Top calendar header banner in electric fuchsia -->
-    <path
-        android:fillColor="#FF2E93"
-        android:pathData="M34,30 h40 c4.4,0 8,3.6 8,8 v10 H26 V38 c0,-4.4 3.6,-8 8,-8 Z" />
-    
-    <!-- Calendar rings / hangers -->
-    <path
-        android:fillColor="#00F5D4"
-        android:pathData="M40,24 h4 v10 h-4 Z M64,24 h4 v10 h-4 Z" />
-
-    <!-- Big groovy checkmark in electric cyan -->
-    <path
-        android:fillColor="#00F5D4"
-        android:pathData="M46.5,60.5 L39.5,53.5 L36,57 L46.5,67.5 L72,42 L68.5,38.5 Z" />
-
-    <!-- Groovy sparkle star in cyber gold -->
-    <path
-        android:fillColor="#FFD166"
-        android:pathData="M76,28 Q76,34 82,34 Q76,34 76,40 Q76,34 70,34 Q76,34 76,28 Z" />
-    <path
-        android:fillColor="#FF7A00"
-        android:pathData="M30,68 Q30,72 34,72 Q30,72 30,76 Q30,72 26,72 Q30,72 30,68 Z" />
+    <!-- Scaled smaller calendar centered in the 108x108 adaptive icon safe zone -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.68"
+        android:scaleY="0.68">
+        <!-- Top Binder Loops -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M38,24 C39.66,24 41,25.34 41,27 L41,33 C41,34.66 39.66,36 38,36 C36.34,36 35,34.66 35,33 L35,27 C35,25.34 36.34,24 38,24 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M70,24 C71.66,24 73,25.34 73,27 L73,33 C73,34.66 71.66,36 70,36 C68.34,36 67,34.66 67,33 L67,27 C67,25.34 68.34,24 70,24 Z" />
+        <!-- Calendar Outer Body with Hollow Blank Center -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M35,30 L73,30 C77.42,30 81,33.58 81,38 L81,76 C81,80.42 77.42,84 73,84 L35,84 C30.58,84 27,80.42 27,76 L27,38 C27,33.58 30.58,30 35,30 Z M33,47 L75,47 L75,76 C75,77.66 73.66,79 72,79 L36,79 C34.34,79 33,77.66 33,76 L33,47 Z" />
+    </group>
 </vector>

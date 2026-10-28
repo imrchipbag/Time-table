@@ -1,9 +1,10 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
-import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.ai.AIAttendanceAdvisor
+import com.example.data.ai.AIMessage
 import com.example.data.db.GrooveTrackDatabase
 import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
@@ -37,13 +38,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         repository = AttendanceRepository(
             db.courseDao(),
             db.timeSlotDao(),
-            db.attendanceRecordDao()
+            db.attendanceRecordDao(),
+            application
         )
-        // Seed initial sample schedule so the user immediately has a working experience
-        viewModelScope.launch {
-            repository.seedInitialDataIfEmpty()
-        }
     }
+
+    val timetableValidity: StateFlow<Pair<String, String>> = repository.timetableValidity
 
     private val _currentDate = MutableStateFlow(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE))
     val currentDate: StateFlow<String> = _currentDate.asStateFlow()
@@ -51,8 +51,19 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
-    private val _groovyToast = MutableSharedFlow<String>()
-    val groovyToast: SharedFlow<String> = _groovyToast.asSharedFlow()
+    private val _toast = MutableSharedFlow<String>()
+    val toast: SharedFlow<String> = _toast.asSharedFlow()
+
+    // AI Messages
+    private val _aiMessages = MutableStateFlow<List<AIMessage>>(
+        listOf(
+            AIMessage(
+                isUser = false,
+                text = "Hello! I am your AI Attendance Advisor. Ask me anything like:\n• \"If I skip classes, when can I?\"\n• \"Can I skip classes today?\"\n• \"Which subject has the safest bunk margin?\""
+            )
+        )
+    )
+    val aiMessages: StateFlow<List<AIMessage>> = _aiMessages.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val scheduleItems: StateFlow<List<ScheduleItem>> = _currentDate
@@ -103,11 +114,11 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 note = note
             )
             val msg = when (status) {
-                AttendanceStatus.ATTENDED -> "Groovy! Marked as Attended ✨"
-                AttendanceStatus.MISSED -> "Logged as Missed / Bunked 😴"
-                AttendanceStatus.CANCELLED -> "Class Cancelled logged 🏖️"
+                AttendanceStatus.ATTENDED -> "Marked as Attended"
+                AttendanceStatus.MISSED -> "Marked as Missed"
+                AttendanceStatus.CANCELLED -> "Marked as Cancelled"
             }
-            _groovyToast.emit(msg)
+            _toast.emit(msg)
         }
     }
 
@@ -117,43 +128,35 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 date = _currentDate.value,
                 timeSlotId = slot.id
             )
-            _groovyToast.emit("Attendance reset for class ↺")
+            _toast.emit("Attendance reset for class")
         }
     }
 
-    fun importParsedSchedule(slots: List<ParsedCourseSlot>, replaceExisting: Boolean) {
+    fun importParsedSchedule(
+        slots: List<ParsedCourseSlot>,
+        replaceExisting: Boolean,
+        startDate: String = "",
+        endDate: String = ""
+    ) {
         viewModelScope.launch {
-            repository.importParsedSlots(slots, replaceExisting)
-            _groovyToast.emit("Groovy! Uploaded ${slots.size} class slots 🚀")
+            repository.importParsedSlots(slots, replaceExisting, startDate, endDate)
+            val validityStr = if (startDate.isNotBlank() && endDate.isNotBlank()) " ($startDate to $endDate)" else ""
+            _toast.emit("Applied ${slots.size} sessions to timetable$validityStr")
         }
     }
 
-    fun importFromText(text: String, replaceExisting: Boolean): Boolean {
-        val parsed = TimetableParser.parseTimetableText(text)
-        if (parsed.isEmpty()) return false
+    fun clearAllTimetable() {
         viewModelScope.launch {
-            repository.importParsedSlots(parsed, replaceExisting)
-            _groovyToast.emit("Imported ${parsed.size} class slots successfully! 🎸")
-        }
-        return true
-    }
-
-    fun loadPreset(presetName: String, replaceExisting: Boolean) {
-        val presets = TimetableParser.getSamplePresets()
-        val slots = presets[presetName] ?: return
-        viewModelScope.launch {
-            repository.importParsedSlots(slots, replaceExisting)
-            _groovyToast.emit("Loaded '$presetName' timetable! ✌️")
+            repository.clearAllTimetable()
+            _toast.emit("All timetable classes cleared")
         }
     }
 
     fun addCourseWithSlots(
         name: String,
         code: String,
-        professor: String,
-        room: String,
-        colorHex: String,
         targetPercent: Int,
+        sessionType: String,
         days: List<Int>,
         startTime: String,
         endTime: String
@@ -162,10 +165,11 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val course = Course(
                 name = name,
                 code = code,
-                professor = professor,
-                room = room,
-                colorHex = colorHex,
-                targetPercent = targetPercent
+                professor = "",
+                room = "",
+                colorHex = "#FFFFFF",
+                targetPercent = targetPercent,
+                sessionType = sessionType
             )
             val courseId = repository.addCourse(course)
             days.forEach { day ->
@@ -174,25 +178,62 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     dayOfWeek = day,
                     startTime = startTime,
                     endTime = endTime,
-                    roomOverride = room
+                    roomOverride = "",
+                    sessionType = sessionType
                 )
                 repository.addTimeSlot(slot)
             }
-            _groovyToast.emit("Added $name with ${days.size} weekly classes! ⚡")
+            _toast.emit("Added $sessionType: $name (${days.size} weekly)")
         }
+    }
+
+    fun updateCourseTarget(courseId: Long, newTarget: Int) {
+        viewModelScope.launch {
+            repository.updateCourseTargetPercent(courseId, newTarget)
+            _toast.emit("Updated minimum required attendance to $newTarget%")
+        }
+    }
+
+    fun scheduleClassReminders(context: android.content.Context) {
+        com.example.util.NotificationScheduler.scheduleRemindersForSlots(
+            context = context,
+            slots = allTimeSlots.value,
+            courses = allCourses.value
+        )
+    }
+
+    fun triggerTestNotification(context: android.content.Context) {
+        com.example.util.NotificationScheduler.triggerTestNotification(context)
     }
 
     fun deleteCourse(courseId: Long) {
         viewModelScope.launch {
             repository.deleteCourse(courseId)
-            _groovyToast.emit("Course removed from timetable 🗑️")
+            _toast.emit("Course removed")
         }
     }
 
     fun deleteTimeSlot(slotId: Long) {
         viewModelScope.launch {
             repository.deleteTimeSlot(slotId)
-            _groovyToast.emit("Class time slot deleted 🗑️")
+            _toast.emit("Class slot removed")
+        }
+    }
+
+    fun askAI(query: String) {
+        if (query.isBlank()) return
+        val userMsg = AIMessage(isUser = true, text = query.trim())
+        _aiMessages.value = _aiMessages.value + userMsg
+
+        viewModelScope.launch {
+            val answer = AIAttendanceAdvisor.generateAdvice(
+                userQuery = query,
+                todaySchedule = scheduleItems.value,
+                allSlots = allTimeSlots.value,
+                stats = overallStats.value
+            )
+            val aiMsg = AIMessage(isUser = false, text = answer)
+            _aiMessages.value = _aiMessages.value + aiMsg
         }
     }
 }

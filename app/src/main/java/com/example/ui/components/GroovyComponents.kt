@@ -5,7 +5,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,50 +31,47 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.AttendanceStatus
-import com.example.ui.theme.GroovyAttended
-import com.example.ui.theme.GroovyBg
-import com.example.ui.theme.GroovyBorder
-import com.example.ui.theme.GroovyBorderBright
-import com.example.ui.theme.GroovyCancelled
-import com.example.ui.theme.GroovyCyan
-import com.example.ui.theme.GroovyMagenta
-import com.example.ui.theme.GroovyMissed
-import com.example.ui.theme.GroovyOrange
-import com.example.ui.theme.GroovySurfaceCard
-import com.example.ui.theme.GroovySurfaceElevated
-import com.example.ui.theme.GroovyTextMuted
-import com.example.ui.theme.GroovyTextPrimary
-import com.example.ui.theme.GroovyTextSecondary
-import com.example.ui.theme.GroovyYellow
+import com.example.ui.theme.MonoBlack
+import com.example.ui.theme.MonoBorder
+import com.example.ui.theme.MonoBorderBright
+import com.example.ui.theme.MonoDarkGrey
+import com.example.ui.theme.MonoGrey
+import com.example.ui.theme.MonoLightGrey
+import com.example.ui.theme.MonoSurfaceCard
+import com.example.ui.theme.MonoSurfaceElevated
+import com.example.ui.theme.MonoWhite
+import com.example.ui.theme.MetricSuccessGreen
+import com.example.ui.theme.MetricSuccessGreenBg
+import com.example.ui.theme.MetricSuccessGreenBorder
+import com.example.ui.theme.MetricDangerRed
+import com.example.ui.theme.MetricDangerRedBg
+import com.example.ui.theme.MetricDangerRedBorder
 
 @Composable
 fun GroovyCard(
     modifier: Modifier = Modifier,
-    borderColor: Color = GroovyBorder,
+    borderColor: Color = MonoBorder,
     glowEffect: Boolean = false,
     content: @Composable () -> Unit
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(GroovySurfaceCard)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MonoSurfaceCard)
             .border(
-                width = if (glowEffect) 1.5.dp else 1.dp,
-                color = if (glowEffect) GroovyBorderBright else borderColor,
-                shape = RoundedCornerShape(20.dp)
+                width = 1.dp,
+                color = if (glowEffect) MonoBorderBright else borderColor,
+                shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp)
     ) {
@@ -92,28 +88,23 @@ fun GroovyStreakBadge(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier
-            .clip(RoundedCornerShape(30.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(GroovyMagenta.copy(alpha = 0.25f), GroovyOrange.copy(alpha = 0.25f))
-                )
-            )
-            .border(1.dp, GroovyMagenta.copy(alpha = 0.6f), RoundedCornerShape(30.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MonoSurfaceElevated)
+            .border(1.dp, MonoBorderBright, RoundedCornerShape(20.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
             .testTag("streak_badge")
     ) {
         Icon(
             imageVector = Icons.Default.LocalFireDepartment,
-            contentDescription = "Groove Streak",
-            tint = GroovyOrange,
-            modifier = Modifier.size(18.dp)
+            contentDescription = "Streak",
+            tint = MonoWhite,
+            modifier = Modifier.size(16.dp)
         )
         Text(
-            text = "$streakDays DAY GROOVE",
+            text = "$streakDays DAY STREAK",
             style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
-                color = GroovyYellow
+                fontWeight = FontWeight.Bold,
+                color = MonoWhite
             )
         )
     }
@@ -124,20 +115,17 @@ fun GroovyCircularGauge(
     percentage: Float,
     targetPercentage: Int = 75,
     size: Dp = 150.dp,
-    strokeWidth: Dp = 14.dp,
+    strokeWidth: Dp = 10.dp,
     modifier: Modifier = Modifier
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = (percentage / 100f).coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 900),
+        animationSpec = tween(durationMillis = 600),
         label = "gaugeProgress"
     )
 
-    val gaugeColor = when {
-        percentage >= targetPercentage -> GroovyCyan
-        percentage >= (targetPercentage - 10) -> GroovyYellow
-        else -> GroovyMissed
-    }
+    val isAboveThreshold = percentage >= targetPercentage
+    val gradeColor = if (isAboveThreshold) MetricSuccessGreen else MetricDangerRed
 
     Box(
         contentAlignment = Alignment.Center,
@@ -145,22 +133,19 @@ fun GroovyCircularGauge(
     ) {
         Canvas(modifier = Modifier.size(size)) {
             val stroke = strokeWidth.toPx()
-            val arcSize = this.size.width - stroke
 
             // Background track
             drawArc(
-                color = GroovySurfaceElevated,
+                color = Color(0xFF222222),
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
                 style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
 
-            // Neon Progress arc
+            // Dynamic Progress arc (Green if above threshold, Red if below)
             drawArc(
-                brush = Brush.sweepGradient(
-                    listOf(GroovyMagenta, gaugeColor, GroovyCyan, GroovyMagenta)
-                ),
+                color = gradeColor,
                 startAngle = -90f,
                 sweepAngle = animatedProgress * 360f,
                 useCenter = false,
@@ -172,15 +157,15 @@ fun GroovyCircularGauge(
             Text(
                 text = "${percentage.toInt()}%",
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontWeight = FontWeight.Black,
-                    color = GroovyTextPrimary
+                    fontWeight = FontWeight.Bold,
+                    color = gradeColor
                 )
             )
             Text(
-                text = if (percentage >= targetPercentage) "ON TRACK ✨" else "ATTEND MORE!",
+                text = if (isAboveThreshold) "ON TRACK" else "BELOW TARGET",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = gaugeColor,
+                    fontWeight = FontWeight.SemiBold,
+                    color = gradeColor,
                     letterSpacing = 0.5.sp
                 )
             )
@@ -195,20 +180,21 @@ fun AttendanceQuickButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val (label, icon, activeColor, tag) = when (status) {
-        AttendanceStatus.ATTENDED -> Quadruple("Attended", Icons.Default.Check, GroovyAttended, "btn_attend")
-        AttendanceStatus.MISSED -> Quadruple("Missed", Icons.Default.Close, GroovyMissed, "btn_miss")
-        AttendanceStatus.CANCELLED -> Quadruple("Cancelled", Icons.Default.EventBusy, GroovyCancelled, "btn_cancel")
+    val (label, icon, tag) = when (status) {
+        AttendanceStatus.ATTENDED -> Triple("Attended", Icons.Default.Check, "btn_attend")
+        AttendanceStatus.MISSED -> Triple("Missed", Icons.Default.Close, "btn_miss")
+        AttendanceStatus.CANCELLED -> Triple("Cancelled", Icons.Default.EventBusy, "btn_cancel")
     }
 
-    val backgroundColor = if (isSelected) activeColor.copy(alpha = 0.22f) else GroovySurfaceElevated
-    val borderColor = if (isSelected) activeColor else GroovyBorder
+    val backgroundColor = if (isSelected) MonoWhite else MonoSurfaceElevated
+    val contentColor = if (isSelected) MonoBlack else MonoLightGrey
+    val borderColor = if (isSelected) MonoWhite else MonoBorder
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         color = backgroundColor,
-        border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
         modifier = modifier
             .height(44.dp)
             .testTag(tag)
@@ -216,27 +202,25 @@ fun AttendanceQuickButton(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 10.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) activeColor else GroovyTextSecondary,
-                modifier = Modifier.size(16.dp)
+                tint = contentColor,
+                modifier = Modifier.size(15.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                    color = if (isSelected) activeColor else GroovyTextSecondary
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = contentColor
                 )
             )
         }
     }
 }
-
-private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 @Composable
 fun BunkMarginTag(
@@ -245,28 +229,32 @@ fun BunkMarginTag(
     targetPercent: Int = 75,
     modifier: Modifier = Modifier
 ) {
-    val (text, color, bg) = if (isSafe) {
+    val text = if (isSafe) {
         if (bunkMargin > 0) {
-            Triple("Can bunk $bunkMargin class${if (bunkMargin > 1) "es" else ""}", GroovyCyan, GroovyCyan.copy(alpha = 0.15f))
+            "Can skip $bunkMargin class${if (bunkMargin > 1) "es" else ""}"
         } else {
-            Triple("At minimum border ($targetPercent%)", GroovyYellow, GroovyYellow.copy(alpha = 0.15f))
+            "On target ($targetPercent%)"
         }
     } else {
-        Triple("Need $bunkMargin to hit $targetPercent%", GroovyMissed, GroovyMissed.copy(alpha = 0.15f))
+        "Need $bunkMargin to reach $targetPercent%"
     }
+
+    val tagBg = if (isSafe) MetricSuccessGreenBg else MetricDangerRedBg
+    val tagBorder = if (isSafe) MetricSuccessGreenBorder else MetricDangerRedBorder
+    val tagText = if (isSafe) MetricSuccessGreen else MetricDangerRed
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
-            .border(0.8.dp, color.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
+            .background(tagBg)
+            .border(0.8.dp, tagBorder, RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = tagText
             )
         )
     }

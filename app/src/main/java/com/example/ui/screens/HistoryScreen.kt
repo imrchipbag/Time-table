@@ -13,18 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,19 +35,14 @@ import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.Course
 import com.example.ui.components.GroovyCard
-import com.example.ui.theme.GroovyAttended
-import com.example.ui.theme.GroovyBg
-import com.example.ui.theme.GroovyBorder
-import com.example.ui.theme.GroovyCancelled
-import com.example.ui.theme.GroovyCyan
-import com.example.ui.theme.GroovyMagenta
-import com.example.ui.theme.GroovyMissed
-import com.example.ui.theme.GroovySurfaceCard
-import com.example.ui.theme.GroovySurfaceElevated
-import com.example.ui.theme.GroovyTextMuted
-import com.example.ui.theme.GroovyTextPrimary
-import com.example.ui.theme.GroovyTextSecondary
-import com.example.ui.theme.GroovyYellow
+import com.example.ui.theme.MonoBlack
+import com.example.ui.theme.MonoBorder
+import com.example.ui.theme.MonoBorderBright
+import com.example.ui.theme.MonoGrey
+import com.example.ui.theme.MonoLightGrey
+import com.example.ui.theme.MonoSurfaceCard
+import com.example.ui.theme.MonoSurfaceElevated
+import com.example.ui.theme.MonoWhite
 
 @Composable
 fun HistoryScreen(
@@ -74,28 +60,28 @@ fun HistoryScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(GroovyBg)
+            .background(MonoBlack)
             .testTag("history_screen"),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Header
         item {
             Column {
                 Text(
-                    text = "ATTENDANCE LOG",
-                    style = MaterialTheme.typography.displayMedium.copy(
+                    text = "LOG",
+                    style = MaterialTheme.typography.displayLarge.copy(
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp,
-                        color = GroovyMagenta
+                        letterSpacing = 0.5.sp,
+                        color = MonoWhite
                     )
                 )
                 Text(
-                    text = "RECORD OF ALL CHECKED SESSIONS (${records.size})",
+                    text = "ALL LOGGED SESSIONS (${records.size})",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp,
-                        color = GroovyCyan
+                        color = MonoGrey
                     )
                 )
             }
@@ -111,7 +97,6 @@ fun HistoryScreen(
                     FilterChip(
                         label = "ALL (${records.size})",
                         isSelected = selectedFilter == null,
-                        color = GroovyMagenta,
                         onClick = { selectedFilter = null }
                     )
                 }
@@ -120,7 +105,6 @@ fun HistoryScreen(
                     FilterChip(
                         label = "ATTENDED ($count)",
                         isSelected = selectedFilter == AttendanceStatus.ATTENDED,
-                        color = GroovyAttended,
                         onClick = { selectedFilter = AttendanceStatus.ATTENDED }
                     )
                 }
@@ -129,7 +113,6 @@ fun HistoryScreen(
                     FilterChip(
                         label = "MISSED ($count)",
                         isSelected = selectedFilter == AttendanceStatus.MISSED,
-                        color = GroovyMissed,
                         onClick = { selectedFilter = AttendanceStatus.MISSED }
                     )
                 }
@@ -138,7 +121,6 @@ fun HistoryScreen(
                     FilterChip(
                         label = "CANCELLED ($count)",
                         isSelected = selectedFilter == AttendanceStatus.CANCELLED,
-                        color = GroovyCancelled,
                         onClick = { selectedFilter = AttendanceStatus.CANCELLED }
                     )
                 }
@@ -151,22 +133,20 @@ fun HistoryScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "📜", fontSize = 36.sp)
-                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "NO RECORDS FOUND",
+                            text = "No Records Found",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = GroovyTextPrimary
+                                color = MonoWhite
                             )
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Answer your class attendance on the Today tab to start building your log!",
-                            style = MaterialTheme.typography.bodySmall.copy(color = GroovyTextSecondary)
+                            text = "Answer your class attendance on the Today tab to build your log.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = MonoGrey)
                         )
                     }
                 }
@@ -184,23 +164,22 @@ fun HistoryScreen(
 private fun FilterChip(
     label: String,
     isSelected: Boolean,
-    color: Color,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelected) color.copy(alpha = 0.25f) else GroovySurfaceCard)
-            .border(1.dp, if (isSelected) color else GroovyBorder, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isSelected) MonoWhite else MonoSurfaceCard)
+            .border(1.dp, if (isSelected) MonoWhite else MonoBorder, RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
             .testTag("filter_${label.substringBefore(" ")}")
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Black,
-                color = if (isSelected) color else GroovyTextSecondary
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) MonoBlack else MonoLightGrey
             )
         )
     }
@@ -211,18 +190,10 @@ fun HistoryRecordCard(
     record: AttendanceRecord,
     course: Course?
 ) {
-    val courseColor = remember(course?.colorHex) {
-        try {
-            Color(android.graphics.Color.parseColor(course?.colorHex ?: "#FF2E93"))
-        } catch (_: Exception) {
-            GroovyMagenta
-        }
-    }
-
-    val (badgeText, badgeColor) = when (record.status) {
-        AttendanceStatus.ATTENDED -> "ATTENDED ✨" to GroovyAttended
-        AttendanceStatus.MISSED -> "MISSED 😴" to GroovyMissed
-        AttendanceStatus.CANCELLED -> "CANCELLED 🏖️" to GroovyCancelled
+    val (badgeText, isAttended) = when (record.status) {
+        AttendanceStatus.ATTENDED -> "ATTENDED" to true
+        AttendanceStatus.MISSED -> "MISSED" to false
+        AttendanceStatus.CANCELLED -> "CANCELLED" to false
     }
 
     GroovyCard {
@@ -231,44 +202,32 @@ fun HistoryRecordCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(courseColor)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = course?.name ?: "Class",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = MonoWhite
+                    )
                 )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = course?.name ?: "Unknown Course",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Black,
-                            color = GroovyTextPrimary
-                        )
-                    )
-                    Text(
-                        text = "Date: ${record.date} ${if (course?.code?.isNotBlank() == true) "• ${course.code}" else ""}",
-                        style = MaterialTheme.typography.labelSmall.copy(color = GroovyTextMuted)
-                    )
-                }
+                Text(
+                    text = "${record.date} ${if (course?.code?.isNotBlank() == true) "• ${course.code}" else ""}",
+                    style = MaterialTheme.typography.labelSmall.copy(color = MonoGrey)
+                )
             }
 
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(badgeColor.copy(alpha = 0.2f))
-                    .border(1.dp, badgeColor, RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isAttended) MonoWhite else MonoSurfaceElevated)
+                    .border(1.dp, MonoBorderBright, RoundedCornerShape(6.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = badgeText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Black,
-                        color = badgeColor
+                        fontWeight = FontWeight.Bold,
+                        color = if (isAttended) MonoBlack else MonoWhite
                     )
                 )
             }

@@ -11,6 +11,7 @@ data class Course(
     val code: String = "",
     val professor: String = "",
     val room: String = "",
-    val colorHex: String = "#FF2E93",
-    val targetPercent: Int = 75
+    val colorHex: String = "#FFFFFF",
+    val targetPercent: Int = 75,
+    val sessionType: String = "CLASS" // CLASS, POSTING, LAB
 )

@@ -1,7 +1,5 @@
 package com.example.data.repository
 
-import com.example.data.model.Course
-import com.example.data.model.TimeSlot
 import java.util.Locale
 
 data class ParsedCourseSlot(
@@ -9,169 +7,158 @@ data class ParsedCourseSlot(
     val courseCode: String = "",
     val professor: String = "",
     val room: String = "",
-    val dayOfWeek: Int, // 1..7
+    val dayOfWeek: Int, // 1..7 (Monday=1, Sunday=7)
     val startTime: String,
     val endTime: String,
-    val colorHex: String
+    val colorHex: String = "#FFFFFF",
+    val sessionType: String = "CLASS" // CLASS, POSTING, LAB
 )
 
 object TimetableParser {
 
-    val GROOVY_COLORS = listOf(
-        "#FF2E93", // Neon Fuchsia
-        "#00F5D4", // Electric Turquoise
-        "#9D4EDD", // Psychedelic Purple
-        "#FF7A00", // Groovy Orange
-        "#FFD166", // Cyber Yellow
-        "#4CC9F0", // Electric Blue
-        "#F72585", // Hot Pink
-        "#7209B7"  // Deep Violet
+    val MONO_SHADES = listOf(
+        "#FFFFFF",
+        "#E0E0E0",
+        "#BDBDBD",
+        "#9E9E9E",
+        "#757575",
+        "#EEEEEE"
+    )
+
+    private val dayKeywords = mapOf(
+        "mon" to 1, "monday" to 1,
+        "tue" to 2, "tues" to 2, "tuesday" to 2,
+        "wed" to 3, "wednesday" to 3,
+        "thu" to 4, "thur" to 4, "thurs" to 4, "thursday" to 4,
+        "fri" to 5, "friday" to 5,
+        "sat" to 6, "saturday" to 6,
+        "sun" to 7, "sunday" to 7
     )
 
     fun parseTimetableText(text: String): List<ParsedCourseSlot> {
         val results = mutableListOf<ParsedCourseSlot>()
         val lines = text.lines()
-        var colorIndex = 0
-
-        val dayKeywords = mapOf(
-            "mon" to 1, "monday" to 1,
-            "tue" to 2, "tues" to 2, "tuesday" to 2,
-            "wed" to 3, "wednesday" to 3,
-            "thu" to 4, "thur" to 4, "thurs" to 4, "thursday" to 4,
-            "fri" to 5, "friday" to 5,
-            "sat" to 6, "saturday" to 6,
-            "sun" to 7, "sunday" to 7
-        )
+        var shadeIndex = 0
 
         for (rawLine in lines) {
             val line = rawLine.trim()
             if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) continue
 
-            // Try CSV split first: Day, StartTime, EndTime, CourseName, [Code], [Room], [Prof]
-            val commaParts = line.split(",").map { it.trim() }
-            if (commaParts.size >= 4) {
-                val dayStr = commaParts[0].lowercase(Locale.ROOT)
-                val day = dayKeywords[dayStr] ?: extractDayOfWeek(dayStr)
-                val start = formatTime(commaParts[1])
-                val end = formatTime(commaParts[2])
-                val name = commaParts[3]
-                val code = if (commaParts.size > 4) commaParts[4] else ""
-                val room = if (commaParts.size > 5) commaParts[5] else ""
-                val prof = if (commaParts.size > 6) commaParts[6] else ""
-                val color = GROOVY_COLORS[colorIndex % GROOVY_COLORS.size]
-                colorIndex++
+            val shade = MONO_SHADES[shadeIndex % MONO_SHADES.size]
+            shadeIndex++
 
-                results.add(
-                    ParsedCourseSlot(
-                        courseName = name,
-                        courseCode = code,
-                        professor = prof,
-                        room = room,
-                        dayOfWeek = day,
-                        startTime = start,
-                        endTime = end,
-                        colorHex = color
-                    )
-                )
+            // Detect session type (Class, Posting, Lab)
+            val sessionType = detectSessionType(line)
+
+            // Format A: CSV split (Day, Start, End, Course, [Code], [Type])
+            val parts = line.split(Regex("[,;]")).map { it.trim() }
+
+            if (parts.size >= 4) {
+                val dayCandidate1 = dayKeywords[parts[0].lowercase(Locale.ROOT)]
+                val dayCandidate2 = dayKeywords[parts[1].lowercase(Locale.ROOT)]
+
+                if (dayCandidate1 != null) {
+                    val day = dayCandidate1
+                    val start = formatTime(parts[1])
+                    val end = formatTime(parts[2])
+                    val name = parts[3]
+                    val code = if (parts.size > 4) parts[4] else ""
+                    val explicitType = if (parts.size > 5) parts[5].uppercase() else sessionType
+                    val finalType = if (explicitType in listOf("CLASS", "POSTING", "LAB")) explicitType else sessionType
+                    results.add(ParsedCourseSlot(name, code, "", "", day, start, end, shade, finalType))
+                    continue
+                } else if (dayCandidate2 != null) {
+                    val name = parts[0]
+                    val day = dayCandidate2
+                    val start = formatTime(parts[2])
+                    val end = formatTime(parts[3])
+                    val explicitType = if (parts.size > 4) parts[4].uppercase() else sessionType
+                    val finalType = if (explicitType in listOf("CLASS", "POSTING", "LAB")) explicitType else sessionType
+                    results.add(ParsedCourseSlot(name, "", "", "", day, start, end, shade, finalType))
+                    continue
+                }
+            }
+
+            // Format B: Heuristic string search, e.g. "Monday 09:00 - 10:30 Surgery Posting"
+            val timeRegex = Regex("(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)\\s*(?:-|to|–)\\s*(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)", RegexOption.IGNORE_CASE)
+            val timeMatch = timeRegex.find(line)
+
+            if (timeMatch != null) {
+                val rawStart = timeMatch.groupValues[1]
+                val rawEnd = timeMatch.groupValues[2]
+                val start = formatTime(rawStart)
+                val end = formatTime(rawEnd)
+
+                val daysFound = mutableListOf<Int>()
+                val lineLower = line.lowercase(Locale.ROOT)
+                dayKeywords.forEach { (keyword, dayNum) ->
+                    val wordRegex = Regex("\\b$keyword\\b", RegexOption.IGNORE_CASE)
+                    if (wordRegex.containsMatchIn(lineLower) && !daysFound.contains(dayNum)) {
+                        daysFound.add(dayNum)
+                    }
+                }
+                if (daysFound.isEmpty()) {
+                    daysFound.add(1)
+                }
+
+                var remaining = line.replace(timeMatch.value, "")
+                dayKeywords.keys.forEach { kw ->
+                    remaining = remaining.replace(Regex("\\b$kw\\b", RegexOption.IGNORE_CASE), "")
+                }
+                remaining = remaining.replace(Regex("[,:;-]"), " ").trim()
+                val courseName = if (remaining.isNotBlank()) remaining.split(Regex("\\s+")).joinToString(" ") else "Class"
+
+                daysFound.forEach { day ->
+                    results.add(ParsedCourseSlot(courseName, "", "", "", day, start, end, shade, sessionType))
+                }
                 continue
             }
 
-            // Fallback: heuristic pattern matching like "Mon 09:00 - 10:30 Data Structures"
-            val tokens = line.split(Regex("\\s+"))
-            if (tokens.size >= 3) {
-                val firstToken = tokens[0].lowercase(Locale.ROOT).replace(Regex("[^a-z]"), "")
-                val day = dayKeywords[firstToken] ?: 1
-
-                // Look for time pattern
-                val timeRegex = Regex("(\\d{1,2}[:.]?\\d{0,2})\\s*[-to–]+\\s*(\\d{1,2}[:.]?\\d{0,2})")
-                val match = timeRegex.find(line)
-                if (match != null) {
-                    val rawStart = match.groupValues[1]
-                    val rawEnd = match.groupValues[2]
-                    val start = formatTime(rawStart)
-                    val end = formatTime(rawEnd)
-
-                    val remaining = line.replace(match.value, "").replace(tokens[0], "").trim()
-                    val courseName = if (remaining.isNotBlank()) remaining else "Course Slot"
-                    val color = GROOVY_COLORS[colorIndex % GROOVY_COLORS.size]
-                    colorIndex++
-
-                    results.add(
-                        ParsedCourseSlot(
-                            courseName = courseName,
-                            dayOfWeek = day,
-                            startTime = start,
-                            endTime = end,
-                            colorHex = color
-                        )
-                    )
-                }
+            // Format C: Plain course on one line with simple tokens
+            if (parts.size >= 2) {
+                val day = dayKeywords[parts[0].lowercase(Locale.ROOT)] ?: 1
+                val name = parts.last()
+                results.add(ParsedCourseSlot(name, "", "", "", day, "09:00", "10:30", shade, sessionType))
             }
         }
         return results
     }
 
-    private fun extractDayOfWeek(input: String): Int {
-        val lower = input.lowercase(Locale.ROOT)
+    private fun detectSessionType(text: String): String {
+        val lower = text.lowercase(Locale.ROOT)
         return when {
-            lower.contains("mon") -> 1
-            lower.contains("tue") -> 2
-            lower.contains("wed") -> 3
-            lower.contains("thu") -> 4
-            lower.contains("fri") -> 5
-            lower.contains("sat") -> 6
-            lower.contains("sun") -> 7
-            else -> 1
+            lower.contains("posting") || lower.contains("ward") || lower.contains("clinical") || lower.contains("clinic") || lower.contains("internship") -> "POSTING"
+            lower.contains("lab") || lower.contains("practical") || lower.contains("dissection") || lower.contains("workshop") -> "LAB"
+            else -> "CLASS"
         }
     }
 
-    private fun formatTime(timeStr: String): String {
-        val clean = timeStr.trim().replace(".", ":")
-        if (clean.contains(":")) {
-            val parts = clean.split(":")
-            val h = parts[0].padStart(2, '0')
-            val m = if (parts.size > 1 && parts[1].length >= 2) parts[1].substring(0, 2) else "00"
-            return "$h:$m"
-        }
-        val num = clean.filter { it.isDigit() }
-        return when (num.length) {
-            1, 2 -> "${num.padStart(2, '0')}:00"
-            3 -> "0${num[0]}:${num.substring(1)}"
-            4 -> "${num.substring(0, 2)}:${num.substring(2)}"
-            else -> "09:00"
-        }
-    }
+    private fun formatTime(raw: String): String {
+        var str = raw.trim().lowercase(Locale.ROOT)
+        val isPm = str.contains("pm")
+        val isAm = str.contains("am")
+        str = str.replace("am", "").replace("pm", "").trim()
+        str = str.replace(".", ":")
 
-    fun getSamplePresets(): Map<String, List<ParsedCourseSlot>> {
-        return mapOf(
-            "Computer Science & AI" to listOf(
-                ParsedCourseSlot("Algorithms & Data Structures", "CS301", "Dr. Vance", "Hall 101", 1, "09:00", "10:30", "#FF2E93"),
-                ParsedCourseSlot("Artificial Intelligence", "CS402", "Prof. Hendrix", "Lab B", 1, "11:00", "12:30", "#00F5D4"),
-                ParsedCourseSlot("Database Systems", "CS305", "Dr. Clarke", "Hall 204", 2, "10:00", "11:30", "#9D4EDD"),
-                ParsedCourseSlot("Web Architecture & Mobile", "CS310", "Prof. Groovy", "Tech Lab", 2, "13:30", "15:00", "#FF7A00"),
-                ParsedCourseSlot("Algorithms & Data Structures", "CS301", "Dr. Vance", "Hall 101", 3, "09:00", "10:30", "#FF2E93"),
-                ParsedCourseSlot("Computer Networks", "CS308", "Dr. Turing", "Hall 105", 3, "11:00", "12:30", "#FFD166"),
-                ParsedCourseSlot("Database Systems", "CS305", "Dr. Clarke", "Hall 204", 4, "10:00", "11:30", "#9D4EDD"),
-                ParsedCourseSlot("Cloud Computing", "CS415", "Prof. Nova", "Lab C", 4, "14:00", "15:30", "#4CC9F0"),
-                ParsedCourseSlot("Artificial Intelligence", "CS402", "Prof. Hendrix", "Lab B", 5, "09:30", "11:00", "#00F5D4"),
-                ParsedCourseSlot("Project Seminar & Groove", "CS490", "Panel", "Auditorium", 5, "11:30", "13:00", "#F72585")
-            ),
-            "Business & Design Groove" to listOf(
-                ParsedCourseSlot("Brand Strategy", "MKT201", "Dr. Madison", "Studio A", 1, "09:30", "11:00", "#FF2E93"),
-                ParsedCourseSlot("Financial Modeling", "FIN302", "Prof. Sterling", "Hall 3B", 1, "11:30", "13:00", "#00F5D4"),
-                ParsedCourseSlot("UI/UX & Retro Design", "DES105", "Prof. Ziggy", "Design Hub", 2, "10:00", "12:00", "#9D4EDD"),
-                ParsedCourseSlot("Corporate Law", "LAW210", "Dr. Cooper", "Hall 1A", 3, "09:00", "10:30", "#FF7A00"),
-                ParsedCourseSlot("Brand Strategy", "MKT201", "Dr. Madison", "Studio A", 4, "11:00", "12:30", "#FF2E93"),
-                ParsedCourseSlot("Digital Media Production", "MED304", "Prof. Apollo", "Sound Lab", 5, "13:00", "15:00", "#4CC9F0")
-            ),
-            "Science & Engineering" to listOf(
-                ParsedCourseSlot("Quantum Physics", "PHY301", "Dr. Feynman", "Lecture Hall 4", 1, "08:30", "10:00", "#FF2E93"),
-                ParsedCourseSlot("Thermodynamics", "ENG204", "Prof. Watt", "Hall 2", 1, "10:30", "12:00", "#00F5D4"),
-                ParsedCourseSlot("Organic Chemistry", "CHM305", "Dr. Curie", "Chemistry Lab", 2, "09:00", "11:00", "#FFD166"),
-                ParsedCourseSlot("Linear Algebra", "MTH202", "Prof. Euler", "Hall 3", 3, "11:00", "12:30", "#9D4EDD"),
-                ParsedCourseSlot("Quantum Physics", "PHY301", "Dr. Feynman", "Lecture Hall 4", 4, "08:30", "10:00", "#FF2E93"),
-                ParsedCourseSlot("Engineering Workshop", "ENG108", "Prof. Otto", "Maker Space", 5, "14:00", "16:30", "#FF7A00")
-            )
-        )
+        var hour = 9
+        var min = 0
+
+        if (str.contains(":")) {
+            val parts = str.split(":")
+            hour = parts[0].filter { it.isDigit() }.toIntOrNull() ?: 9
+            min = parts.getOrNull(1)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+        } else {
+            val num = str.filter { it.isDigit() }.toIntOrNull() ?: 9
+            hour = if (num > 24) num / 100 else num
+            min = if (num > 24) num % 100 else 0
+        }
+
+        if (isPm && hour < 12) hour += 12
+        if (isAm && hour == 12) hour = 0
+
+        val hStr = hour.toString().padStart(2, '0')
+        val mStr = min.toString().padStart(2, '0')
+        return "$hStr:$mStr"
     }
 }
+
